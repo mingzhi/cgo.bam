@@ -1,7 +1,21 @@
 package bam
 
 import (
+	"bytes"
 	"fmt"
+)
+
+const (
+	CigarMatch       byte = 'M'
+	CigarInsertion   byte = 'I'
+	CigarDeletion    byte = 'D'
+	CigarSkipped     byte = 'N'
+	CigarSoftClipped byte = 'S'
+	CigarHardClipped byte = 'H'
+	CigarPadded      byte = 'P'
+	CigarEqual       byte = '='
+	CigarMismatch    byte = 'X'
+	CigarBack        byte = 'B'
 )
 
 type CigarOp struct {
@@ -16,9 +30,12 @@ func (c CigarOp) String() string {
 type Cigar []CigarOp
 
 func (c Cigar) String() string {
-	var s string
-	for i := 0; i < len(c); i++ {
-		s += fmt.Sprint(c[i])
+	if len(c) == 0 {
+		return "*"
 	}
-	return s
+	var b bytes.Buffer
+	for _, co := range c {
+		fmt.Fprint(&b, co)
+	}
+	return b.String()
 }

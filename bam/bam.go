@@ -1,3 +1,5 @@
+// Package for reading and writinng SAM/BAM format files.
+// Using CGO to port htslib.
 package bam
 
 /*
@@ -18,6 +20,7 @@ type File struct {
 }
 
 // Open bam file.
+// It will also read header.
 func OpenFile(name string) *File {
 	var f File
 	f.name = name
