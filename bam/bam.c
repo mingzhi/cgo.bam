@@ -53,3 +53,25 @@ char * get_seqq(const bam1_t *b) {
     } else kputsn("*", 1, &str);
 	return ks_release(&str);
 }
+
+int cigar_oplen(const bam1_t *b, int i){
+	uint32_t *cigar = bam_get_cigar(b);
+	return bam_cigar_oplen(cigar[i]);
+}
+char cigar_opchr(const bam1_t *b, int i){
+	uint32_t *cigar = bam_get_cigar(b);
+	return bam_cigar_opchr(cigar[i]);
+}
+
+char * get_rnext(const bam_hdr_t *h, const bam1_t *b) {
+	const bam1_core_t *c = &b->core;
+	kstring_t str;
+	str.l = str.m = 0; str.s = NULL;
+	if (c->mtid < 0) kputsn("*", 1, &str); // mate chr
+    else if (c->mtid == c->tid) kputsn("=", 1, &str);
+    else {
+        kputs(h->target_name[c->mtid], &str);
+    }
+    return ks_release(&str);
+}
+
