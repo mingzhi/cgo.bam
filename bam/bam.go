@@ -2,7 +2,7 @@ package bam
 
 /*
 #cgo pkg-config:htslib
-#include "sam.h"
+#include "bam.h"
 */
 import "C"
 import (
@@ -10,13 +10,34 @@ import (
 	"io"
 )
 
-type BGZF struct {
-	c_BGZF *C.BGZF
+// Bam file.
+type File struct {
+	name   string // file name.
+	b      *BGZF
+	header *Header
 }
 
-type BamFile struct {
-	file string
-	b    *BGZF
+// Open bam file.
+func OpenFile(name string) *File {
+	var f File
+	f.name = name
+	f.b = NewBGZF(name)
+	// read bam header.
+	f.header = NewHeader()
+	f.header.Read(f.b)
+	n := int(f.header.c_bam_hdr.n_targets)
+	println(n)
+	println(C.GoString(f.header.c_bam_hdr.text))
+	return &f
+}
+
+// Close bam file.
+func (f *File) Close() {
+	f.b.Close()
+}
+
+type BGZF struct {
+	c_BGZF *C.BGZF
 }
 
 func NewBGZF(file string) *BGZF {
@@ -29,25 +50,15 @@ func (b *BGZF) Close() {
 	C.bgzf_close(b.c_BGZF)
 }
 
-func NewBamFile(file string) *BamFile {
-	b := BamFile{}
-	b.file = file
-	b.b = NewBGZF(file)
-	return &b
-}
-
-func (b *BamFile) Close() {
-	b.b.Close()
-}
-
-func (b *BamFile) Read() (*Record, error) {
+func (b *File) Read() (*Record, error) {
 	var err error
 	r := newRecord()
-	i := C.bam_read1(b.b.c_BGZF, r.c_bam1_t)
-	switch i {
-	case 0:
+	r.header = b.header
+	i := int(C.bam_read1(b.b.c_BGZF, r.c_bam1))
+	switch {
+	case i >= 0:
 		err = nil
-	case -1:
+	case i == -1:
 		err = io.EOF
 	default:
 		err = errors.New("bam: something wrong when reading bam file.")
