@@ -4,17 +4,89 @@ package bam
 #include "bam.h"
 */
 import "C"
-import "unsafe"
+import (
+	"errors"
+	"io"
+
+	"unsafe"
+)
 
 type Record struct {
+	QName  string
+	Flag   int
+	RName  string
+	Pos    int
+	MapQ   int
+	Seq    string
+	SeqQ   string
+	RNext  string
+	PNext  int
+	TLen   int
+	Cigar  Cigar
 	header *Header
 	c_bam1 *C.bam1_t
 }
 
-func newRecord() *Record {
+func newRecord(h *Header) *Record {
 	r := Record{}
 	r.c_bam1 = C.bam_init1()
+	r.header = h
 	return &r
+}
+
+func (r *Record) read(b *BGZF) error {
+	var err error
+	i := int(C.bam_read1(b.c_BGZF, r.c_bam1))
+	switch {
+	case i >= 0:
+		err = nil
+	case i == -1:
+		err = io.EOF
+	default:
+		err = errors.New("bam: something wrong when reading bam file.")
+	}
+	r.parse()
+	return err
+}
+
+func (r *Record) parse() {
+	// qname
+	var c_str *C.char
+	c_str = C.get_qname(r.c_bam1)
+	r.QName = C.GoString(c_str)
+	freeCChars(c_str)
+	// flag
+	r.Flag = int(r.c_bam1.core.flag)
+	// rname
+	c_str = C.get_rname(r.header.c_bam_hdr, r.c_bam1)
+	r.RName = C.GoString(c_str)
+	freeCChars(c_str)
+	// pos
+	r.Pos = int(r.c_bam1.core.pos) + 1
+	// mapq
+	r.MapQ = int(r.c_bam1.core.qual)
+	// seq
+	c_str = C.get_seq(r.c_bam1)
+	r.Seq = C.GoString(c_str)
+	freeCChars(c_str)
+	// seqq
+	c_str = C.get_seqq(r.c_bam1)
+	r.SeqQ = C.GoString(c_str)
+	freeCChars(c_str)
+	// rnext
+	c_str = C.get_rnext(r.header.c_bam_hdr, r.c_bam1)
+	r.RNext = C.GoString(c_str)
+	freeCChars(c_str)
+	// pnext
+	r.PNext = int(r.c_bam1.core.mpos)
+	// tlen
+	r.TLen = int(r.c_bam1.core.isize)
+
+	r.Cigar = r.parseCigar()
+}
+
+func freeCChars(c_str *C.char) {
+	C.free(unsafe.Pointer(c_str))
 }
 
 func (r *Record) Format() string {
@@ -28,47 +100,7 @@ func (r *Record) Destroy() {
 	C.bam_destroy1(r.c_bam1)
 }
 
-func (r *Record) QName() string {
-	c_str := C.get_qname(r.c_bam1)
-	str := C.GoString(c_str)
-	C.free(unsafe.Pointer(c_str))
-	return str
-}
-
-func (r *Record) Flag() int {
-	return (int(r.c_bam1.core.flag))
-}
-
-func (r *Record) RName() string {
-	c_str := C.get_rname(r.header.c_bam_hdr, r.c_bam1)
-	str := C.GoString(c_str)
-	C.free(unsafe.Pointer(c_str))
-	return str
-}
-
-func (r *Record) Pos() int {
-	return (int(r.c_bam1.core.pos) + 1)
-}
-
-func (r *Record) MapQ() int {
-	return (int(r.c_bam1.core.qual))
-}
-
-func (r *Record) Seq() string {
-	c_str := C.get_seq(r.c_bam1)
-	str := C.GoString(c_str)
-	C.free(unsafe.Pointer(c_str))
-	return str
-}
-
-func (r *Record) SeqQ() string {
-	c_str := C.get_seqq(r.c_bam1)
-	str := C.GoString(c_str)
-	C.free(unsafe.Pointer(c_str))
-	return str
-}
-
-func (r *Record) Cigar() Cigar {
+func (r *Record) parseCigar() Cigar {
 	var cigar Cigar
 	nCigar := int(r.c_bam1.core.n_cigar)
 	for i := 0; i < nCigar; i++ {
@@ -78,19 +110,4 @@ func (r *Record) Cigar() Cigar {
 		cigar = append(cigar, c)
 	}
 	return cigar
-}
-
-func (r *Record) RNext() string {
-	c_str := C.get_rnext(r.header.c_bam_hdr, r.c_bam1)
-	str := C.GoString(c_str)
-	C.free(unsafe.Pointer(c_str))
-	return str
-}
-
-func (r *Record) PNext() int {
-	return int(r.c_bam1.core.mpos) + 1
-}
-
-func (r *Record) TLen() int {
-	return int(r.c_bam1.core.isize)
 }

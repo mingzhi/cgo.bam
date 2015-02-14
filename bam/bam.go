@@ -7,10 +7,6 @@ package bam
 #include "bam.h"
 */
 import "C"
-import (
-	"errors"
-	"io"
-)
 
 // Bam file.
 type File struct {
@@ -54,17 +50,7 @@ func (b *BGZF) Close() {
 }
 
 func (b *File) Read() (*Record, error) {
-	var err error
-	r := newRecord()
-	r.header = b.header
-	i := int(C.bam_read1(b.b.c_BGZF, r.c_bam1))
-	switch {
-	case i >= 0:
-		err = nil
-	case i == -1:
-		err = io.EOF
-	default:
-		err = errors.New("bam: something wrong when reading bam file.")
-	}
+	r := newRecord(b.header)
+	err := r.read(b.b)
 	return r, err
 }
