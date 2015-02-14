@@ -35,8 +35,7 @@ func newRecord(h *Header) *Record {
 	return &r
 }
 
-func (r *Record) read(b *BGZF) error {
-	var err error
+func (r *Record) read(b *BGZF) (err error) {
 	i := int(C.bam_read1(b.c_BGZF, r.c_bam1))
 	switch {
 	case i >= 0:
@@ -46,8 +45,14 @@ func (r *Record) read(b *BGZF) error {
 	default:
 		err = errors.New("bam: something wrong when reading bam file.")
 	}
+
+	if err != nil {
+		return
+	}
+
 	r.parse()
-	return err
+
+	return nil
 }
 
 func (r *Record) parse() {
