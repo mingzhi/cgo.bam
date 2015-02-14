@@ -11,18 +11,19 @@ import (
 	"unsafe"
 )
 
+// Record represents a SAM/BAM record.
 type Record struct {
-	QName  string
-	Flag   int
-	RName  string
-	Pos    int
-	MapQ   int
-	Seq    string
-	SeqQ   string
-	RNext  string
-	PNext  int
-	TLen   int
-	Cigar  Cigar
+	QName  string // Query template Name.
+	Flag   Flags  // bitwise Flag
+	RName  string // Reference sequence Name
+	Pos    int    // 1-based leftmost mapping Position.
+	MapQ   int    // Mapping Quality
+	Seq    string // segment Sequence.
+	SeqQ   string // ASCII of based Quality plus 33.
+	RNext  string // Reference sequence name of the primary alignment of the Next read in the template.
+	PNext  int    // Position of the primary alignment of the Next read in the template.
+	TLen   int    // signed observed Template Lenth.
+	Cigar  Cigar  // CIGAR
 	header *Header
 	c_bam1 *C.bam1_t
 }
@@ -56,7 +57,7 @@ func (r *Record) parse() {
 	r.QName = C.GoString(c_str)
 	freeCChars(c_str)
 	// flag
-	r.Flag = int(r.c_bam1.core.flag)
+	r.Flag = Flags(r.c_bam1.core.flag)
 	// rname
 	c_str = C.get_rname(r.header.c_bam_hdr, r.c_bam1)
 	r.RName = C.GoString(c_str)
@@ -106,7 +107,7 @@ func (r *Record) parseCigar() Cigar {
 	for i := 0; i < nCigar; i++ {
 		var c CigarOp
 		c.Len = int(C.cigar_oplen(r.c_bam1, C.int(i)))
-		c.C = byte(C.cigar_opchr(r.c_bam1, C.int(i)))
+		c.Type = byte(C.cigar_opchr(r.c_bam1, C.int(i)))
 		cigar = append(cigar, c)
 	}
 	return cigar
