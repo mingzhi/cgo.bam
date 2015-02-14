@@ -24,9 +24,6 @@ func OpenFile(name string) *File {
 	// read bam header.
 	f.header = NewHeader()
 	f.header.Read(f.b)
-	n := int(f.header.c_bam_hdr.n_targets)
-	println(n)
-	println(C.GoString(f.header.c_bam_hdr.text))
 	return &f
 }
 

@@ -63,7 +63,7 @@ func (r *Record) parse() {
 	r.RName = C.GoString(c_str)
 	freeCChars(c_str)
 	// pos
-	r.Pos = int(r.c_bam1.core.pos) + 1
+	r.Pos = int(r.c_bam1.core.pos)
 	// mapq
 	r.MapQ = int(r.c_bam1.core.qual)
 	// seq
